@@ -278,7 +278,11 @@ const GameCanvas = () => {
         // Randomly choose which wall to spawn obstacle on
         const spawnOnLeft = Math.random() < 0.5;
         const obstacleWidth = prev.wallWidth; // Match wall width exactly
-        const obstacleHeight = 80;
+        // Random height between 40 and 120 pixels
+        const minHeight = 40;
+        const maxHeight = 120;
+        const obstacleHeight =
+          Math.floor(Math.random() * (maxHeight - minHeight + 1)) + minHeight;
 
         const newObstacle: Obstacle = {
           x: spawnOnLeft ? 0 : window.innerWidth - prev.wallWidth, // Position obstacles to overlap with wall area
