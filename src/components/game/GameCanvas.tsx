@@ -84,8 +84,9 @@ const GameCanvas = () => {
   const router = useRouter();
 
   const [gameState, setGameState] = useState<GameState>({
-    playerX: 50, // Starting position on left wall
-    playerY: typeof window !== "undefined" ? window.innerHeight / 2 - 15 : 300, // Middle of screen vertically
+    playerX: 30, // Starting position on left wall
+    playerY:
+      typeof window !== "undefined" ? window.innerHeight * 0.7 - 15 : 400, // Lower on screen
     playerSize: 30, // Size of the square
     wallWidth: 30, // Width of the walls
     speed: 150, // Pixels per second upward (not used anymore)
@@ -110,7 +111,7 @@ const GameCanvas = () => {
         } else {
           // Check if player is in mid-air and within the white line
           const centerX = window.innerWidth / 2;
-          const whiteLineWidth = 100; // Width of the white line zone
+          const whiteLineWidth = 20; // Width of the white line zone
           const playerCenterX = gameState.playerX + gameState.playerSize / 2;
 
           if (
@@ -162,9 +163,9 @@ const GameCanvas = () => {
   // Restart game function
   const restartGame = () => {
     setGameState({
-      playerX: 50,
+      playerX: 30,
       playerY:
-        typeof window !== "undefined" ? window.innerHeight / 2 - 15 : 300,
+        typeof window !== "undefined" ? window.innerHeight * 0.7 - 15 : 400,
       playerSize: 30,
       wallWidth: 40,
       speed: 150,
@@ -193,8 +194,8 @@ const GameCanvas = () => {
       // If game is over, don't update
       if (prev.isGameOver) return prev;
 
-      // Keep Y position stationary in the middle
-      let newY = window.innerHeight / 2 - prev.playerSize / 2; // Always in the middle
+      // Keep Y position stationary lower on screen
+      let newY = window.innerHeight * 0.7 - prev.playerSize / 2; // Lower position
       let newX = prev.playerX;
       let newIsOnLeftWall = prev.isOnLeftWall;
       let newIsJumping = prev.isJumping;
@@ -202,7 +203,7 @@ const GameCanvas = () => {
 
       // Handle jumping animation
       if (prev.isJumping) {
-        newJumpProgress += deltaTime * 5; // Control jump speed
+        newJumpProgress += deltaTime * 2.5; // Slower jump speed for more control
 
         if (newJumpProgress >= 1) {
           // Jump completed
@@ -224,13 +225,13 @@ const GameCanvas = () => {
           }
 
           newX = newIsOnLeftWall
-            ? prev.wallWidth + 10
-            : window.innerWidth - prev.wallWidth - 10 - prev.playerSize;
+            ? prev.wallWidth
+            : window.innerWidth - prev.wallWidth - prev.playerSize;
         } else {
           // Calculate position during jump using easing function
           const startX = prev.isOnLeftWall
-            ? prev.wallWidth + 10
-            : window.innerWidth - prev.wallWidth - 10 - prev.playerSize;
+            ? prev.wallWidth
+            : window.innerWidth - prev.wallWidth - prev.playerSize;
 
           // Check if this is a return jump
           const centerX = window.innerWidth / 2;
@@ -244,8 +245,8 @@ const GameCanvas = () => {
           const endX = isReturningToSameWall
             ? startX // Return to same position
             : prev.isOnLeftWall
-              ? window.innerWidth - prev.wallWidth - 10 - prev.playerSize
-              : prev.wallWidth + 10;
+              ? window.innerWidth - prev.wallWidth - prev.playerSize
+              : prev.wallWidth;
 
           const jumpCurve = -4 * Math.pow(newJumpProgress - 0.5, 2) + 1; // Parabolic curve for jump
 
@@ -255,8 +256,8 @@ const GameCanvas = () => {
       } else {
         // Not jumping, stay on wall
         newX = prev.isOnLeftWall
-          ? prev.wallWidth + 10
-          : window.innerWidth - prev.wallWidth - 10 - prev.playerSize;
+          ? prev.wallWidth
+          : window.innerWidth - prev.wallWidth - prev.playerSize;
       }
 
       // Update time elapsed
@@ -276,11 +277,11 @@ const GameCanvas = () => {
       if (newTimeElapsed - prev.lastObstacleTime > obstacleSpawnRate) {
         // Randomly choose which wall to spawn obstacle on
         const spawnOnLeft = Math.random() < 0.5;
-        const obstacleWidth = 80; // Reduced from 120 to 80
+        const obstacleWidth = prev.wallWidth; // Match wall width exactly
         const obstacleHeight = 80;
 
         const newObstacle: Obstacle = {
-          x: spawnOnLeft ? 0 : window.innerWidth - obstacleWidth,
+          x: spawnOnLeft ? 0 : window.innerWidth - prev.wallWidth, // Position obstacles to overlap with wall area
           y: -obstacleHeight, // Start above screen
           width: obstacleWidth,
           height: obstacleHeight,
@@ -300,15 +301,29 @@ const GameCanvas = () => {
         .filter((obstacle) => obstacle.y < window.innerHeight + 100); // Remove obstacles that are off screen
 
       // Check for collisions
-      let isGameOver = false;
-      for (const obstacle of newObstacles) {
-        // Check if player is on the same wall as obstacle
-        const playerOnSameWall =
-          (prev.isOnLeftWall && obstacle.isOnLeftWall) ||
-          (!prev.isOnLeftWall && !obstacle.isOnLeftWall);
+      let isGameOver = prev.isGameOver;
 
-        if (playerOnSameWall && !prev.isJumping) {
-          // Check collision bounds
+      console.log("=== COLLISION CHECK DEBUG ===");
+      console.log("Game over state:", isGameOver);
+      console.log("Number of obstacles:", newObstacles.length);
+      console.log("Player position:", {
+        x: newX,
+        y: newY,
+        size: prev.playerSize,
+      });
+      console.log("Player is jumping:", prev.isJumping);
+      console.log("Player on left wall:", prev.isOnLeftWall);
+
+      if (!isGameOver) {
+        console.log("Checking collisions...");
+
+        for (let i = 0; i < newObstacles.length; i++) {
+          const obstacle = newObstacles[i];
+
+          console.log(`--- Obstacle ${i} ---`);
+          console.log("Obstacle:", obstacle);
+
+          // Check collision bounds regardless of wall position or jumping state
           const playerLeft = newX;
           const playerRight = newX + prev.playerSize;
           const playerTop = newY;
@@ -319,17 +334,70 @@ const GameCanvas = () => {
           const obstacleTop = obstacle.y;
           const obstacleBottom = obstacle.y + obstacle.height;
 
+          console.log("Player bounds:", {
+            left: playerLeft,
+            right: playerRight,
+            top: playerTop,
+            bottom: playerBottom,
+          });
+
+          console.log("Obstacle bounds:", {
+            left: obstacleLeft,
+            right: obstacleRight,
+            top: obstacleTop,
+            bottom: obstacleBottom,
+          });
+
+          // Log each collision condition (removed tolerance for more accurate detection)
+          const condition1 = playerRight > obstacleLeft;
+          const condition2 = playerLeft < obstacleRight;
+          const condition3 = playerBottom > obstacleTop;
+          const condition4 = playerTop < obstacleBottom;
+
+          console.log("Collision conditions:", {
+            "playerRight > obstacleLeft": `${playerRight} > ${obstacleLeft} = ${condition1}`,
+            "playerLeft < obstacleRight": `${playerLeft} < ${obstacleRight} = ${condition2}`,
+            "playerBottom > obstacleTop": `${playerBottom} > ${obstacleTop} = ${condition3}`,
+            "playerTop < obstacleBottom": `${playerTop} < ${obstacleBottom} = ${condition4}`,
+          });
+
+          const allConditionsMet =
+            condition1 && condition2 && condition3 && condition4;
+          console.log("All conditions met (collision):", allConditionsMet);
+
+          // Simple AABB collision detection with >= for edge cases
           if (
-            playerLeft < obstacleRight &&
-            playerRight > obstacleLeft &&
-            playerTop < obstacleBottom &&
-            playerBottom > obstacleTop
+            playerRight >= obstacleLeft &&
+            playerLeft <= obstacleRight &&
+            playerBottom >= obstacleTop &&
+            playerTop <= obstacleBottom
           ) {
+            console.log("🔴 COLLISION DETECTED! Setting game over to true");
+            console.log("Final collision data:", {
+              player: {
+                left: playerLeft,
+                right: playerRight,
+                top: playerTop,
+                bottom: playerBottom,
+              },
+              obstacle: {
+                left: obstacleLeft,
+                right: obstacleRight,
+                top: obstacleTop,
+                bottom: obstacleBottom,
+              },
+            });
             isGameOver = true;
             break;
           }
         }
+
+        console.log("Final game over state after collision check:", isGameOver);
+      } else {
+        console.log("Skipping collision check - game already over");
       }
+
+      console.log("=== END COLLISION CHECK DEBUG ===");
 
       return {
         ...prev,
@@ -396,7 +464,7 @@ const GameCanvas = () => {
 
     // Draw white line in the middle
     const centerX = canvas.width / 2;
-    const whiteLineWidth = 100;
+    const whiteLineWidth = 20; // Much thinner line
     ctx.fillStyle = "rgba(255, 255, 255, 0.5)"; // White with 50% opacity
     ctx.fillRect(
       centerX - whiteLineWidth / 2,
@@ -417,7 +485,7 @@ const GameCanvas = () => {
 
   return (
     <div className="fixed inset-0 w-screen h-screen bg-slate-900 overflow-hidden">
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10">
         <ScoreDisplay timeElapsed={gameState.timeElapsed} />
       </div>
 
