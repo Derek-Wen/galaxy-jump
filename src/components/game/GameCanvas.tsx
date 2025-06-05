@@ -291,12 +291,20 @@ const GameCanvas = () => {
         newObstacles.push(newObstacle);
       }
 
-      // Update obstacle positions
-      const obstacleSpeed = 200; // pixels per second
+      // Update obstacle positions with increasing speed over time
+      const baseObstacleSpeed = 200; // Base pixels per second
+      const maxObstacleSpeed = 600; // Maximum pixels per second
+      const speedIncreaseRate = 0.2; // How fast the speed increases per second
+      const currentObstacleSpeed = Math.min(
+        maxObstacleSpeed,
+        baseObstacleSpeed +
+          newTimeElapsed * speedIncreaseRate * baseObstacleSpeed,
+      );
+
       newObstacles = newObstacles
         .map((obstacle) => ({
           ...obstacle,
-          y: obstacle.y + obstacleSpeed * deltaTime,
+          y: obstacle.y + currentObstacleSpeed * deltaTime,
         }))
         .filter((obstacle) => obstacle.y < window.innerHeight + 100); // Remove obstacles that are off screen
 
